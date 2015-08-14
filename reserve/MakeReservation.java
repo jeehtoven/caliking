@@ -172,16 +172,17 @@ public class MakeReservation extends JPanel implements ActionListener {
 			Class.forName("com.mysql.jdbc.Driver");  
 
 			Connection con=DriverManager.getConnection(  
-			"jdbc:mysql://localhost:3306/sonoo","root","root");  
+			"jdbc:mysql://67.20.111.85:3306/jeehtove_caliking","jeehtove_ck","Z_^PBBZT+kcy");  
 
 			//here sonoo is database name, root is username and password  
 
 			Statement stmt=con.createStatement();  
 
-			ResultSet rs=stmt.executeQuery("select * from emp");  
+			//ResultSet rs=stmt.executeQuery("select * from emp"); 
+			int rs=stmt.executeUpdate("INSERT INTO  `jeehtove_caliking`.`emp` (`field1`,`field2`,`field3`,`field4`) VALUES ('284',  '384',  '383',  '394');"); 
 
-			while(rs.next())  
-			System.out.println(rs.getInt(1)+"  "+rs.getString(2)+"  "+rs.getString(3));  
+		 
+			System.out.println("Room Booked!");  
 
 			con.close();  
 
