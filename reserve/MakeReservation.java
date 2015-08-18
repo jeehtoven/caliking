@@ -15,11 +15,13 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+import java.util.*;
+
 public class MakeReservation extends JPanel implements ActionListener {
 	//Labels to identify the fields
 	    JLabel amountroomsLabel;
-	    JLabel departuredateLabel;
-	    JLabel arrivaldateLabel;
+	    JLabel  checkoutdateLabel;
+	    JLabel  checkindateLabel;
 		JLabel nameLabel;
 	
 	//Buttons for room selection
@@ -27,23 +29,25 @@ public class MakeReservation extends JPanel implements ActionListener {
 	
 		//Fields for data entry
 	    JFormattedTextField amountroomsField;
-	    JFormattedTextField departuredateField;
-	    JFormattedTextField arrivaldateField;
+	    JFormattedTextField  checkoutdateField;
+	    JFormattedTextField  checkindateField;
 		JFormattedTextField nameField;
+		
+		ButtonGroup group = new ButtonGroup();
+		JRadioButton standardRoom = new JRadioButton("Standard Room");
+		JRadioButton familyRoom = new JRadioButton("Family Room");
+		JRadioButton suiteRoom = new JRadioButton("Suite");
 	
 	public MakeReservation(){
 		new BorderLayout();
 		
-		JRadioButton standardRoom = new JRadioButton("Standard Room");
         standardRoom.setMnemonic(KeyEvent.VK_K);
         standardRoom.setActionCommand("Standard Room");
         standardRoom.setSelected(true);
 
-        JRadioButton familyRoom = new JRadioButton("Family Room");
         familyRoom.setMnemonic(KeyEvent.VK_F);
         familyRoom.setActionCommand("Family Room");
 
-        JRadioButton suiteRoom = new JRadioButton("Suite");
         suiteRoom.setMnemonic(KeyEvent.VK_S);
         suiteRoom.setActionCommand("Suite");
 
@@ -58,7 +62,6 @@ public class MakeReservation extends JPanel implements ActionListener {
 		
 
 		//Group the radio buttons.
-        ButtonGroup group = new ButtonGroup();
         group.add(standardRoom);
         group.add(familyRoom);
         group.add(suiteRoom);
@@ -66,8 +69,8 @@ public class MakeReservation extends JPanel implements ActionListener {
 		//Create the labels.
 		nameLabel = new JLabel("Name: ");
         amountroomsLabel = new JLabel("How many rooms? ");
-        departuredateLabel = new JLabel("Check-Out Date: ");
-        arrivaldateLabel = new JLabel("Check-In Date: ");
+         checkoutdateLabel = new JLabel("Check-Out Date: ");
+         checkindateLabel = new JLabel("Check-In Date: ");
 		
 		//Create the text fields and set them up.
 		nameField = new JFormattedTextField();
@@ -77,28 +80,28 @@ public class MakeReservation extends JPanel implements ActionListener {
 		amountroomsField.setValue(new Integer(1));
         amountroomsField.setColumns(10);
 
-		departuredateField = new JFormattedTextField(new java.util.Date());
-        departuredateField.setColumns(10);
+		 checkoutdateField = new JFormattedTextField(new java.util.Date());
+         checkoutdateField.setColumns(10);
 
-		arrivaldateField = new JFormattedTextField(new java.util.Date());
-        arrivaldateField.setColumns(10);
+		 checkindateField = new JFormattedTextField(new java.util.Date());
+         checkindateField.setColumns(10);
 
 		//Tell accessibility tools about label/textfield pairs.
 		nameLabel.setLabelFor(nameField);
         amountroomsLabel.setLabelFor(amountroomsField);
-        departuredateLabel.setLabelFor(departuredateField);
-        arrivaldateLabel.setLabelFor(arrivaldateField);
+         checkoutdateLabel.setLabelFor( checkoutdateField);
+         checkindateLabel.setLabelFor( checkindateField);
 
         //Lay out the labels in a panel.
         JPanel labelPane1 = new JPanel(new GridLayout(0,1));
 
         labelPane1.add(amountroomsLabel);
 
-		JPanel labelPane2 = new JPanel(new GridLayout(0,1));
-        labelPane2.add(departuredateLabel);
-
 		JPanel labelPane3 = new JPanel(new GridLayout(0,1));
-        labelPane3.add(arrivaldateLabel);
+        labelPane3.add( checkindateLabel);
+
+		JPanel labelPane2 = new JPanel(new GridLayout(0,1));
+        labelPane2.add( checkoutdateLabel);
 
 		JPanel labelPane4 = new JPanel(new GridLayout(0,1));
 		labelPane4.add(nameLabel);
@@ -107,12 +110,12 @@ public class MakeReservation extends JPanel implements ActionListener {
         JPanel fieldPane1 = new JPanel(new GridLayout(0,1));
         fieldPane1.add(amountroomsField);
 
-        JPanel fieldPane2 = new JPanel(new GridLayout(0,1));
-		fieldPane2.add(departuredateField);
-		
 		JPanel fieldPane3 = new JPanel(new GridLayout(0,1));
-        fieldPane3.add(arrivaldateField);
-
+        fieldPane3.add(checkindateField);
+        
+		JPanel fieldPane2 = new JPanel(new GridLayout(0,1));
+		fieldPane2.add(checkoutdateField);
+		
 		JPanel fieldPane4 = new JPanel(new GridLayout(0,1));
 		fieldPane4.add(nameField);
 
@@ -127,10 +130,10 @@ public class MakeReservation extends JPanel implements ActionListener {
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         add(labelPane1, BorderLayout.LINE_START);
 		add(fieldPane1, BorderLayout.LINE_END);
-		add(labelPane2, BorderLayout.LINE_START);
-		add(fieldPane2, BorderLayout.LINE_END);
 		add(labelPane3, BorderLayout.LINE_START);
 		add(fieldPane3, BorderLayout.LINE_END);
+		add(labelPane2, BorderLayout.LINE_START);
+		add(fieldPane2, BorderLayout.LINE_END);
 		add(labelPane4, BorderLayout.LINE_START);
 		add(fieldPane4, BorderLayout.LINE_END);
 		
@@ -171,24 +174,60 @@ public class MakeReservation extends JPanel implements ActionListener {
 			try{  
 			Class.forName("com.mysql.jdbc.Driver");  
 
-			Connection con=DriverManager.getConnection(  
-			"jdbc:mysql://67.20.111.85:3306/jeehtove_caliking","jeehtove_ck","Z_^PBBZT+kcy");  
+			Connection con=DriverManager.getConnection("jdbc:mysql://67.20.111.85:3306/jeehtove_caliking","jeehtove_ck","Z_^PBBZT+kcy");  
 
 			//here sonoo is database name, root is username and password  
 
-			Statement stmt=con.createStatement();  
-
+			//The SELECT query 
+			String query_arr = "SELECT * from reservations WHERE checkin BETWEEN '" +  checkindateField.getText() + "' AND '" +  checkoutdateField.getText() + "'";
+			String query_dep = "SELECT * from reservations WHERE checkout BETWEEN '" +  checkindateField.getText() + "' AND '" +  checkoutdateField.getText() + "'";
+			
+			Statement stmt_arr=con.createStatement(); 
+			Statement stmt_dep=con.createStatement(); 
+			Statement stmt_insert=con.createStatement(); 
+			ResultSet result_arr = stmt_arr.executeQuery(query_arr);
+			ResultSet result_dep = stmt_dep.executeQuery(query_dep);
+			
+			//Get room type from radio buttons
+			String room_type;
+			if (standardRoom.isSelected()) {room_type = "Standard";}
+			else if (familyRoom.isSelected()) {room_type = "Family";}
+			else room_type = "Suite";
+			
 			//ResultSet rs=stmt.executeQuery("select * from emp"); 
-			int rs=stmt.executeUpdate("INSERT INTO  `jeehtove_caliking`.`emp` (`field1`,`field2`,`field3`,`field4`) VALUES ('284',  '384',  '383',  '394');"); 
+			if (!result_arr.next() && !result_dep.next()){
+				String insert = "INSERT INTO `reservations` VALUES ('111', '" +  checkindateField.getText() + "', '" +  checkoutdateField.getText() + "',  '" + room_type + "',  '" + nameField.getText() + "');";
+				//System.out.println(insert);
+				int rs=stmt_insert.executeUpdate(insert); 
 
-		 
-			System.out.println("Room Booked!");  
+
+				System.out.println("Room Booked!");
+			}
+			
+			else {
+				System.out.println("The following reservations conflict with the request: ");
+				while (result_arr.next()){
+					String  checkindateDB_arr = result_arr.getString("checkin");
+					String  checkoutdateDB_arr = result_arr.getString("checkout");
+					System.out.println("There is a room booked on " +  checkindateDB_arr + " that checks out on " +  checkoutdateDB_arr + ". Please select another date.");
+				}
+				while (result_dep.next()){
+					String  checkindateDB_dep = result_dep.getString("checkin");
+					String  checkoutdateDB_dep = result_dep.getString("checkout");
+					System.out.println("There is a room booked on " +  checkindateDB_dep + " that checks out on " +  checkoutdateDB_dep + ". Please select another date.");
+				}
+			}
+			
 
 			con.close();  
 
 			}catch(Exception e){ System.out.println(e);}
 		}
 		
+		
+	}
+	
+	public void checkRooms(){
 		
 	}
 
