@@ -80,11 +80,17 @@ public class MakeReservation extends JPanel implements ActionListener {
 		amountroomsField.setValue(new Integer(1));
         amountroomsField.setColumns(10);
 
-		 checkoutdateField = new JFormattedTextField(new java.util.Date());
-         checkoutdateField.setColumns(10);
+		java.util.Date dt_checkout = new java.util.Date();
+		java.text.SimpleDateFormat sdf_checkout = new java.text.SimpleDateFormat("MM/dd/yyyy");
+		String currentDate_checkout = sdf_checkout.format(dt_checkout);
+		checkoutdateField = new JFormattedTextField(currentDate_checkout);
+        checkoutdateField.setColumns(10);
 
-		 checkindateField = new JFormattedTextField(new java.util.Date());
-         checkindateField.setColumns(10);
+		java.util.Date dt_checkin = new java.util.Date();
+		java.text.SimpleDateFormat sdf_checkin = new java.text.SimpleDateFormat("MM/dd/yyyy");
+		String currentDate_checkin = sdf_checkin.format(dt_checkin);
+		checkindateField = new JFormattedTextField(currentDate_checkin);
+        checkindateField.setColumns(10);
 
 		//Tell accessibility tools about label/textfield pairs.
 		nameLabel.setLabelFor(nameField);
@@ -170,13 +176,15 @@ public class MakeReservation extends JPanel implements ActionListener {
 	    }
 	
 	public void actionPerformed(ActionEvent a) {
+		int code = 0;
+		String roomtypeCompare_arr = null;
+		String roomtypeCompare_dep = null;
 		if ("book".equals(a.getActionCommand())){
 			try{  
 			Class.forName("com.mysql.jdbc.Driver");  
-
-			Connection con=DriverManager.getConnection("jdbc:mysql://67.20.111.85:3306/jeehtove_caliking","jeehtove_ck","Z_^PBBZT+kcy");  
-
-			//here sonoo is database name, root is username and password  
+			
+			//Database connection information. Please note that when porting the code, you must have the jdbc Driver installed where the code is running.
+			Connection con=DriverManager.getConnection("jdbc:mysql://67.20.111.85:3306/jeehtove_caliking?relaxAutoCommit=true","jeehtove_ck","Z_^PBBZT+kcy");  
 
 			//The SELECT query 
 			String query_arr = "SELECT * from reservations WHERE checkin BETWEEN '" +  checkindateField.getText() + "' AND '" +  checkoutdateField.getText() + "'";
@@ -190,38 +198,66 @@ public class MakeReservation extends JPanel implements ActionListener {
 			
 			//Get room type from radio buttons
 			String room_type;
-			if (standardRoom.isSelected()) {room_type = "Standard";}
-			else if (familyRoom.isSelected()) {room_type = "Family";}
-			else room_type = "Suite";
+			if (standardRoom.isSelected()) {room_type = "Standard"; code = 1;}
+			else if (familyRoom.isSelected()) {room_type = "Family"; code = 2;}
+			else {room_type = "Suite"; code = 3;}
 			
 			//ResultSet rs=stmt.executeQuery("select * from emp"); 
 			if (!result_arr.next() && !result_dep.next()){
-				String insert = "INSERT INTO `reservations` VALUES ('111', '" +  checkindateField.getText() + "', '" +  checkoutdateField.getText() + "',  '" + room_type + "',  '" + nameField.getText() + "');";
+				//Query Prep for checking for open rooms
+				String query_checkrooms = "SELECT * FROM makereservation_rooms WHERE type = '" + code + "' AND booked = '0';";
+				Statement stmt_checkrooms = con.createStatement();
+				ResultSet checkrooms = stmt_checkrooms.executeQuery(query_checkrooms);
+				
+				if (checkrooms.next()){
+				String getroomnumber = checkrooms.getString("room");
+				String insert = "INSERT INTO `reservations` VALUES ('" + getroomnumber + "', '" +  checkindateField.getText() + "', '" +  checkoutdateField.getText() + "',  '" + room_type + "',  '" + nameField.getText() + "');";
+				String bookroom = "UPDATE `makereservation_rooms` SET booked = '1' WHERE room = '" + getroomnumber + "';";
 				//System.out.println(insert);
 				int rs=stmt_insert.executeUpdate(insert); 
-
-
+				int cr=stmt_checkrooms.executeUpdate(bookroom);
+				con.commit();
 				System.out.println("Room Booked!");
 			}
 			
-			else {
-				System.out.println("The following reservations conflict with the request: ");
-				while (result_arr.next()){
-					String  checkindateDB_arr = result_arr.getString("checkin");
-					String  checkoutdateDB_arr = result_arr.getString("checkout");
-					System.out.println("There is a room booked on " +  checkindateDB_arr + " that checks out on " +  checkoutdateDB_arr + ". Please select another date.");
-				}
-				while (result_dep.next()){
-					String  checkindateDB_dep = result_dep.getString("checkin");
-					String  checkoutdateDB_dep = result_dep.getString("checkout");
-					System.out.println("There is a room booked on " +  checkindateDB_dep + " that checks out on " +  checkoutdateDB_dep + ". Please select another date.");
-				}
+				else System.out.println("All " + room_type + " rooms are booked for the time requested.");
 			}
 			
-
+			else {
+				if (result_arr.next()){
+					roomtypeCompare_arr = result_arr.getString("type");
+					System.out.println("Does " + roomtypeCompare_arr + " equal " + room_type + "?");
+					if (roomtypeCompare_arr.equals(room_type)){
+						String  checkindateDB_arr = result_arr.getString("checkin");
+						String  checkoutdateDB_arr = result_arr.getString("checkout");
+						System.out.println("There is a room booked on " +  checkindateDB_arr + " that checks out on " +  checkoutdateDB_arr + ". Please select another date.");
+					}
+					
+					else {
+						
+						System.out.println("Room Booked!");
+					}
+				}
+			}
+				//System.out.println(query_dep);
+				if (result_dep.next()){
+					roomtypeCompare_dep = result_dep.getString("type");
+					System.out.println("Does " + roomtypeCompare_dep + " equal " + room_type + "?");
+					if (roomtypeCompare_dep.equals(room_type)){
+						String  checkindateDB_dep = result_dep.getString("checkin");
+						String  checkoutdateDB_dep = result_dep.getString("checkout");
+						System.out.println("There is a room booked on " +  checkindateDB_dep + " that checks out on " +  checkoutdateDB_dep + ". Please select another date.");
+					}
+					
+					else {
+						System.out.println("Room Booked!");
+					}	
+				}
 			con.close();  
 
-			}catch(Exception e){ System.out.println(e);}
+			}
+			
+			catch(Exception e){ System.out.println(e);}
 		}
 		
 		
