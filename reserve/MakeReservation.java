@@ -176,6 +176,7 @@ public class MakeReservation extends JPanel implements ActionListener {
 	    }
 	
 	public void actionPerformed(ActionEvent a) {
+		
 		int code = 0;
 		String roomtypeCompare_arr = null;
 		String roomtypeCompare_dep = null;
@@ -204,8 +205,11 @@ public class MakeReservation extends JPanel implements ActionListener {
 			
 			//ResultSet rs=stmt.executeQuery("select * from emp"); 
 			if (!result_arr.next() && !result_dep.next()){
+				
+				bookRoom();
+				
 				//Query Prep for checking for open rooms
-				String query_checkrooms = "SELECT * FROM makereservation_rooms WHERE type = '" + code + "' AND booked = '0';";
+				/*String query_checkrooms = "SELECT * FROM makereservation_rooms WHERE type = '" + code + "' AND booked = '0';";
 				Statement stmt_checkrooms = con.createStatement();
 				ResultSet checkrooms = stmt_checkrooms.executeQuery(query_checkrooms);
 				
@@ -220,13 +224,13 @@ public class MakeReservation extends JPanel implements ActionListener {
 				System.out.println("Room Booked!");
 			}
 			
-				else System.out.println("All " + room_type + " rooms are booked for the time requested.");
+				else System.out.println("All " + room_type + " rooms are booked for the time requested.");*/
 			}
 			
 			else {
 				if (result_arr.next()){
 					roomtypeCompare_arr = result_arr.getString("type");
-					System.out.println("Does " + roomtypeCompare_arr + " equal " + room_type + "?");
+					System.out.println("(arrival) Does " + roomtypeCompare_arr + " equal " + room_type + "?");
 					if (roomtypeCompare_arr.equals(room_type)){
 						String  checkindateDB_arr = result_arr.getString("checkin");
 						String  checkoutdateDB_arr = result_arr.getString("checkout");
@@ -242,7 +246,7 @@ public class MakeReservation extends JPanel implements ActionListener {
 				//System.out.println(query_dep);
 				if (result_dep.next()){
 					roomtypeCompare_dep = result_dep.getString("type");
-					System.out.println("Does " + roomtypeCompare_dep + " equal " + room_type + "?");
+					System.out.println("(departure) Does " + roomtypeCompare_dep + " equal " + room_type + "?");
 					if (roomtypeCompare_dep.equals(room_type)){
 						String  checkindateDB_dep = result_dep.getString("checkin");
 						String  checkoutdateDB_dep = result_dep.getString("checkout");
@@ -263,18 +267,138 @@ public class MakeReservation extends JPanel implements ActionListener {
 		
 	}
 	
-	public void checkRooms(){
+	public void bookRoom(){
+		try{
+			int code = 0;
+			Connection con=DriverManager.getConnection("jdbc:mysql://67.20.111.85:3306/jeehtove_caliking?relaxAutoCommit=true","jeehtove_ck","Z_^PBBZT+kcy");  
+			Statement stmt_insert=con.createStatement(); 
+		
+			String room_type;
+			if (standardRoom.isSelected()) {room_type = "Standard"; code = 1;}
+			else if (familyRoom.isSelected()) {room_type = "Family"; code = 2;}
+			else {room_type = "Suite"; code = 3;}
+		
+			String query_checkrooms = "SELECT * FROM makereservation_rooms WHERE type = '" + code + "' AND booked = '0';";
+			System.out.println(query_checkrooms);
+			Statement stmt_checkrooms = con.createStatement();
+			ResultSet checkrooms = stmt_checkrooms.executeQuery(query_checkrooms);
+		
+			if (checkrooms.next()){
+				String getroomnumber = checkrooms.getString("room");
+				String insert = "INSERT INTO `reservations` VALUES ('" + getroomnumber + "', '" +  checkindateField.getText() + "', '" +  checkoutdateField.getText() + "',  '" + room_type + "',  '" + nameField.getText() + "');";
+				String bookroom = "UPDATE `makereservation_rooms` SET booked = '1' WHERE room = '" + getroomnumber + "';";
+		//System.out.println(insert);
+			int rs=stmt_insert.executeUpdate(insert); 
+			int cr=stmt_checkrooms.executeUpdate(bookroom);
+			con.commit();
+			System.out.println("Room Booked!");
+			}
+			
+			else System.out.println("All " + room_type + " rooms are booked for the time requested.");
+		}
+		
+		catch(Exception e){ System.out.println(e);}	
+		
+	}
+
+	public static void makeRoomTables(){
+		String tableDay = "";
+		int leap_year_days = 28;
+		String year = "2015";
+		int leap = Integer.parseInt(year.trim());
+		
+		if((leap % 400 == 0) || ((leap % 4 == 0) && (leap % 100 != 0)))
+	                        {leap_year_days = 29;}
+	                else
+	                        {}
+		String[] month = new String[13];
+		//populate array
+		month[1] = "01";
+		month[2] = "02";
+		month[3] = "03";
+		month[4] = "04";
+		month[5] = "05";
+		month[6] = "06";
+		month[7] = "07";
+		month[8] = "08";
+		month[9] = "09";
+		month[10] = "10";
+		month[11] = "11";
+		month[12] = "12";
+		
+		try{
+			
+			Connection con=DriverManager.getConnection("jdbc:mysql://67.20.111.85:3306/jeehtove_caliking?relaxAutoCommit=true","jeehtove_ck","Z_^PBBZT+kcy");  
+			Statement stmt_query=con.createStatement();
+			Statement stmt_addroomdata = con.createStatement();
+			
+			for (int i = 1; i <= 12; i++) {
+				if (month[i] == "01" || month[i] == "03" || month[i] == "05" || month[i] == "07" || month[i] == "08" || month[i] == "10" || month[i] == "12") {
+					for (int j = 1; j <= 31; j++){
+						if (j >=1 && j <=9) {
+							tableDay = month[i] + "_0" + j + "_" + year;
+						}
+						else tableDay = month[i] + "_" + j + "_" + year;
+						String query = "CREATE TABLE if not exists jeehtove_caliking.rooms_" + tableDay + "(`ROOM` int(11) NOT NULL,`TYPE` int(11) NOT NULL,`BOOKED` int(11) NOT NULL DEFAULT '0') ENGINE=MyISAM DEFAULT CHARSET=latin1;";
+						String tableData = "INSERT INTO `rooms_" + tableDay + "` (`ROOM`, `TYPE`, `BOOKED`) VALUES (101, 1, 0), (102, 1, 0), (103, 1, 0), (104, 1, 0), (105, 1, 0), (106, 1, 0), (107, 1, 0), (108, 1, 0), (109, 1, 0), (110, 2, 0), (111, 2, 0), (112, 2, 0), (113, 2, 0), (114, 2, 0), (115, 2, 0), (116, 2, 0), (117, 2, 0), (118, 2, 0), (119, 3, 0);";
+						
+						int maketables = stmt_query.executeUpdate(query);
+						int addroomdata = stmt_addroomdata.executeUpdate(tableData);
+						System.out.println("Room Tables Created for " + tableDay + ".");
+					}
+				}
+				
+				if (month[i] == "04" || month[i] == "06" || month[i] == "09" || month[i] == "11") {
+					for (int j = 1; j <= 30; j++){
+						if (j >=1 && j <=9) {
+							tableDay = month[i] + "_0" + j + "_" + year;
+						}
+						else tableDay = month[i] + "_" + j + "_" + year;
+						String query = "CREATE TABLE if not exists jeehtove_caliking.rooms_" + tableDay + "(`ROOM` int(11) NOT NULL,`TYPE` int(11) NOT NULL,`BOOKED` int(11) NOT NULL DEFAULT '0') ENGINE=MyISAM DEFAULT CHARSET=latin1;";
+						String tableData = "INSERT INTO `rooms_" + tableDay + "` (`ROOM`, `TYPE`, `BOOKED`) VALUES (101, 1, 0), (102, 1, 0), (103, 1, 0), (104, 1, 0), (105, 1, 0), (106, 1, 0), (107, 1, 0), (108, 1, 0), (109, 1, 0), (110, 2, 0), (111, 2, 0), (112, 2, 0), (113, 2, 0), (114, 2, 0), (115, 2, 0), (116, 2, 0), (117, 2, 0), (118, 2, 0), (119, 3, 0);";
+						
+						int maketables = stmt_query.executeUpdate(query);
+						int addroomdata = stmt_addroomdata.executeUpdate(tableData);
+						System.out.println("Room Tables Created for " + tableDay + ".");
+					}
+				}
+				
+				if (month[i] == "02") {
+					for (int j = 1; j <= leap_year_days ; j++){
+						if (j >=1 && j <=9) {
+							tableDay = month[i] + "_0" + j + "_" + year;
+						}
+						else tableDay = month[i] + "_" + j + "_" + year;
+						String query = "CREATE TABLE if not exists jeehtove_caliking.rooms_" + tableDay + "(`ROOM` int(11) NOT NULL,`TYPE` int(11) NOT NULL,`BOOKED` int(11) NOT NULL DEFAULT '0') ENGINE=MyISAM DEFAULT CHARSET=latin1;";
+						String tableData = "INSERT INTO `rooms_" + tableDay + "` (`ROOM`, `TYPE`, `BOOKED`) VALUES (101, 1, 0), (102, 1, 0), (103, 1, 0), (104, 1, 0), (105, 1, 0), (106, 1, 0), (107, 1, 0), (108, 1, 0), (109, 1, 0), (110, 2, 0), (111, 2, 0), (112, 2, 0), (113, 2, 0), (114, 2, 0), (115, 2, 0), (116, 2, 0), (117, 2, 0), (118, 2, 0), (119, 3, 0);";
+						
+						int maketables = stmt_query.executeUpdate(query);
+						int addroomdata = stmt_addroomdata.executeUpdate(tableData);
+						System.out.println("Room Tables Created for " + tableDay + ".");
+					}
+				}
+				
+			}
+			
+			System.out.println("Table creation has been completed.");
+		
+		}
+		
+		catch(Exception e){ System.out.println(e);}
 		
 	}
 
     public static void main(String[] args) {
         //Schedule a job for the event dispatch thread:
         //creating and showing this application's GUI.
+		
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
                 //Turn off metal's use of bold fonts
 	        UIManager.put("swing.boldMetal", Boolean.FALSE);
-                showGUI();
+			//Make Room Tables. ONLY execute this function when creating new room status tables for the upcoming year.
+			makeRoomTables();
+            showGUI();
             }
         });
     }
