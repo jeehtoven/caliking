@@ -1,5 +1,8 @@
 package reserve;
 
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+
 import java.awt.*;
 import java.awt.event.*;
 
@@ -16,6 +19,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 import java.util.*;
+import java.util.List;
 
 public class MakeReservation extends JPanel implements ActionListener {
 	//Labels to identify the fields
@@ -37,6 +41,9 @@ public class MakeReservation extends JPanel implements ActionListener {
 		JRadioButton standardRoom = new JRadioButton("Standard Room");
 		JRadioButton familyRoom = new JRadioButton("Family Room");
 		JRadioButton suiteRoom = new JRadioButton("Suite");
+	
+		String currentDate_checkin;
+		String currentDate_checkout;
 	
 	public MakeReservation(){
 		new BorderLayout();
@@ -80,17 +87,19 @@ public class MakeReservation extends JPanel implements ActionListener {
 		amountroomsField.setValue(new Integer(1));
         amountroomsField.setColumns(10);
 
-		java.util.Date dt_checkout = new java.util.Date();
-		java.text.SimpleDateFormat sdf_checkout = new java.text.SimpleDateFormat("MM/dd/yyyy");
-		String currentDate_checkout = sdf_checkout.format(dt_checkout);
-		checkoutdateField = new JFormattedTextField(currentDate_checkout);
-        checkoutdateField.setColumns(10);
-
-		java.util.Date dt_checkin = new java.util.Date();
-		java.text.SimpleDateFormat sdf_checkin = new java.text.SimpleDateFormat("MM/dd/yyyy");
-		String currentDate_checkin = sdf_checkin.format(dt_checkin);
+		//java.util.Date dt_checkin = new java.util.Date();
+		LocalDate today = LocalDate.now();
+		//java.text.SimpleDateFormat sdf_checkin = new java.text.SimpleDateFormat("MM/dd/yyyy");
+		currentDate_checkin = today.toString();
 		checkindateField = new JFormattedTextField(currentDate_checkin);
         checkindateField.setColumns(10);
+
+		//java.util.Date dt_checkout = new java.util.Date();
+		LocalDate tomorrow = today.plus(1, ChronoUnit.DAYS);
+		//java.text.SimpleDateFormat sdf_checkout = new java.text.SimpleDateFormat("MM/dd/yyyy");
+		currentDate_checkout = tomorrow.toString();
+		checkoutdateField = new JFormattedTextField(currentDate_checkout);
+        checkoutdateField.setColumns(10);
 
 		//Tell accessibility tools about label/textfield pairs.
 		nameLabel.setLabelFor(nameField);
@@ -203,8 +212,9 @@ public class MakeReservation extends JPanel implements ActionListener {
 			else if (familyRoom.isSelected()) {room_type = "Family"; code = 2;}
 			else {room_type = "Suite"; code = 3;}
 			
+			bookRoom();
 			//ResultSet rs=stmt.executeQuery("select * from emp"); 
-			if (!result_arr.next() && !result_dep.next()){
+			/*if (!result_arr.next() && !result_dep.next()){
 				
 				bookRoom();
 				
@@ -224,7 +234,7 @@ public class MakeReservation extends JPanel implements ActionListener {
 				System.out.println("Room Booked!");
 			}
 			
-				else System.out.println("All " + room_type + " rooms are booked for the time requested.");*/
+				else System.out.println("All " + room_type + " rooms are booked for the time requested.");
 			}
 			
 			else {
@@ -256,7 +266,7 @@ public class MakeReservation extends JPanel implements ActionListener {
 					else {
 						System.out.println("Room Booked!");
 					}	
-				}
+				}*/
 			con.close();  
 
 			}
@@ -270,31 +280,86 @@ public class MakeReservation extends JPanel implements ActionListener {
 	public void bookRoom(){
 		try{
 			int code = 0;
-			Connection con=DriverManager.getConnection("jdbc:mysql://67.20.111.85:3306/jeehtove_caliking?relaxAutoCommit=true","jeehtove_ck","Z_^PBBZT+kcy");  
-			Statement stmt_insert=con.createStatement(); 
+			Connection con=DriverManager.getConnection("jdbc:mysql://67.20.111.85:3306/jeehtove_caliking?relaxAutoCommit=false","jeehtove_ck","Z_^PBBZT+kcy"); 
+			Statement stmt_insert = con.createStatement(); 
+			Statement stmt_tableRange = con.createStatement();
+			Statement stmt_checkrooms = con.createStatement();
+			Statement stmt_checkrooms_2 = con.createStatement();
+			
+			String insert = null;
 		
 			String room_type;
 			if (standardRoom.isSelected()) {room_type = "Standard"; code = 1;}
 			else if (familyRoom.isSelected()) {room_type = "Family"; code = 2;}
 			else {room_type = "Suite"; code = 3;}
 		
-			String query_checkrooms = "SELECT * FROM makereservation_rooms WHERE type = '" + code + "' AND booked = '0';";
+			
+			//Converting string from checkin and checkout dates so that they can access the correct table
+			String currentDate_checkin_getText =  checkindateField.getText();
+			String currentDate_checkin_rest = currentDate_checkin_getText.substring(5);
+			String currentDate_checkin_replace = currentDate_checkin_rest.replace("-","_");
+			String currentDate_checkin_year = currentDate_checkin.substring(0,4);
+			String currentDate_checkin_final = currentDate_checkin_year + "_" + currentDate_checkin_replace;
+			
+			String currentDate_checkout_getText =  checkoutdateField.getText();
+			String currentDate_checkout_rest = currentDate_checkout_getText.substring(5);
+			String currentDate_checkout_replace = currentDate_checkout_rest.replace("-","_");
+			String currentDate_checkout_year = currentDate_checkout.substring(0,4);
+			String currentDate_checkout_final = currentDate_checkout_year + "_" + currentDate_checkout_replace;
+			
+			//MySQL Statement to select tables from schema that are in between checkin and checkout range
+			String tableRange = "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='jeehtove_caliking' AND TABLE_NAME BETWEEN 'rooms_" + currentDate_checkin_final + "' AND 'rooms_" + currentDate_checkout_final + "';";
+			ResultSet tb_Range = stmt_tableRange.executeQuery(tableRange);
+			
+			System.out.println(tableRange);
+			List tb_range_list = new ArrayList();
+			
+			while (tb_Range.next()){
+				String tb_range_date = tb_Range.getString("table_name");
+				tb_range_list.add(tb_range_date);
+				//String current_table = tb_Range.getString("table_name");
+				//System.out.println(tb_range_list.add(tb_Range.getString("table_name")));
+			}
+			
+			stmt_tableRange.close();
+			
+			for (int x = 0; x < tb_range_list.size(); x++){
+				String query_checkrooms = "SELECT * FROM " + tb_range_list.get(x) + " WHERE type = '" + code + "' AND booked = '0' LIMIT 1;";
+				//System.out.println(query_checkrooms);
+				ResultSet checkrooms = stmt_checkrooms.executeQuery(query_checkrooms);
+				while (checkrooms.next()){
+					String getroomnumber = checkrooms.getString("room");
+					insert = "INSERT INTO `reservations` VALUES ('" + getroomnumber + "', '" +  checkindateField.getText() + "', '" +  checkoutdateField.getText() + "',  '" + room_type + "',  '" + nameField.getText() + "');";
+					String bookroom = "UPDATE `" + tb_range_list.get(x) + "` SET booked = '1' WHERE room = '" + getroomnumber + "';";
+			//System.out.println(insert); 
+				int cr=stmt_checkrooms_2.executeUpdate(bookroom);
+				System.out.println("Room Booked!");
+				}
+			}
+				
+			int rs=stmt_insert.executeUpdate(insert);	
+				
+			
+				
+			
+			/*String query_checkrooms = "SELECT * FROM rooms_" + currentDate_checkin_final + " WHERE type = '" + code + "' AND booked = '0';";
 			System.out.println(query_checkrooms);
 			Statement stmt_checkrooms = con.createStatement();
-			ResultSet checkrooms = stmt_checkrooms.executeQuery(query_checkrooms);
+			ResultSet checkrooms = stmt_checkrooms.executeQuery(query_checkrooms);*/
 		
-			if (checkrooms.next()){
+			/*if (checkrooms.next()){
 				String getroomnumber = checkrooms.getString("room");
 				String insert = "INSERT INTO `reservations` VALUES ('" + getroomnumber + "', '" +  checkindateField.getText() + "', '" +  checkoutdateField.getText() + "',  '" + room_type + "',  '" + nameField.getText() + "');";
-				String bookroom = "UPDATE `makereservation_rooms` SET booked = '1' WHERE room = '" + getroomnumber + "';";
+				String bookroom = "UPDATE `rooms_" + currentDate_checkin_final + "` SET booked = '1' WHERE room = '" + getroomnumber + "';";
 		//System.out.println(insert);
 			int rs=stmt_insert.executeUpdate(insert); 
 			int cr=stmt_checkrooms.executeUpdate(bookroom);
 			con.commit();
 			System.out.println("Room Booked!");
-			}
+			}*/
 			
-			else System.out.println("All " + room_type + " rooms are booked for the time requested.");
+			//else System.out.println("All " + room_type + " rooms are booked for the time requested.");
+			System.out.println("Complete.");
 		}
 		
 		catch(Exception e){ System.out.println(e);}	
@@ -336,9 +401,9 @@ public class MakeReservation extends JPanel implements ActionListener {
 				if (month[i] == "01" || month[i] == "03" || month[i] == "05" || month[i] == "07" || month[i] == "08" || month[i] == "10" || month[i] == "12") {
 					for (int j = 1; j <= 31; j++){
 						if (j >=1 && j <=9) {
-							tableDay = month[i] + "_0" + j + "_" + year;
+							tableDay = year + "_" + month[i] + "_0" + j;
 						}
-						else tableDay = month[i] + "_" + j + "_" + year;
+						else tableDay = year + "_" + month[i] + "_" + j;
 						String query = "CREATE TABLE if not exists jeehtove_caliking.rooms_" + tableDay + "(`ROOM` int(11) NOT NULL,`TYPE` int(11) NOT NULL,`BOOKED` int(11) NOT NULL DEFAULT '0') ENGINE=MyISAM DEFAULT CHARSET=latin1;";
 						String tableData = "INSERT INTO `rooms_" + tableDay + "` (`ROOM`, `TYPE`, `BOOKED`) VALUES (101, 1, 0), (102, 1, 0), (103, 1, 0), (104, 1, 0), (105, 1, 0), (106, 1, 0), (107, 1, 0), (108, 1, 0), (109, 1, 0), (110, 2, 0), (111, 2, 0), (112, 2, 0), (113, 2, 0), (114, 2, 0), (115, 2, 0), (116, 2, 0), (117, 2, 0), (118, 2, 0), (119, 3, 0);";
 						
@@ -351,9 +416,9 @@ public class MakeReservation extends JPanel implements ActionListener {
 				if (month[i] == "04" || month[i] == "06" || month[i] == "09" || month[i] == "11") {
 					for (int j = 1; j <= 30; j++){
 						if (j >=1 && j <=9) {
-							tableDay = month[i] + "_0" + j + "_" + year;
+							tableDay = year + "_" + month[i] + "_0" + j;
 						}
-						else tableDay = month[i] + "_" + j + "_" + year;
+						else tableDay = year + "_" + month[i] + "_" + j;
 						String query = "CREATE TABLE if not exists jeehtove_caliking.rooms_" + tableDay + "(`ROOM` int(11) NOT NULL,`TYPE` int(11) NOT NULL,`BOOKED` int(11) NOT NULL DEFAULT '0') ENGINE=MyISAM DEFAULT CHARSET=latin1;";
 						String tableData = "INSERT INTO `rooms_" + tableDay + "` (`ROOM`, `TYPE`, `BOOKED`) VALUES (101, 1, 0), (102, 1, 0), (103, 1, 0), (104, 1, 0), (105, 1, 0), (106, 1, 0), (107, 1, 0), (108, 1, 0), (109, 1, 0), (110, 2, 0), (111, 2, 0), (112, 2, 0), (113, 2, 0), (114, 2, 0), (115, 2, 0), (116, 2, 0), (117, 2, 0), (118, 2, 0), (119, 3, 0);";
 						
@@ -366,9 +431,9 @@ public class MakeReservation extends JPanel implements ActionListener {
 				if (month[i] == "02") {
 					for (int j = 1; j <= leap_year_days ; j++){
 						if (j >=1 && j <=9) {
-							tableDay = month[i] + "_0" + j + "_" + year;
+							tableDay = year + "_" + month[i] + "_0" + j;
 						}
-						else tableDay = month[i] + "_" + j + "_" + year;
+						else tableDay = year + "_" + month[i] + "_" + j;
 						String query = "CREATE TABLE if not exists jeehtove_caliking.rooms_" + tableDay + "(`ROOM` int(11) NOT NULL,`TYPE` int(11) NOT NULL,`BOOKED` int(11) NOT NULL DEFAULT '0') ENGINE=MyISAM DEFAULT CHARSET=latin1;";
 						String tableData = "INSERT INTO `rooms_" + tableDay + "` (`ROOM`, `TYPE`, `BOOKED`) VALUES (101, 1, 0), (102, 1, 0), (103, 1, 0), (104, 1, 0), (105, 1, 0), (106, 1, 0), (107, 1, 0), (108, 1, 0), (109, 1, 0), (110, 2, 0), (111, 2, 0), (112, 2, 0), (113, 2, 0), (114, 2, 0), (115, 2, 0), (116, 2, 0), (117, 2, 0), (118, 2, 0), (119, 3, 0);";
 						
@@ -397,7 +462,7 @@ public class MakeReservation extends JPanel implements ActionListener {
                 //Turn off metal's use of bold fonts
 	        UIManager.put("swing.boldMetal", Boolean.FALSE);
 			//Make Room Tables. ONLY execute this function when creating new room status tables for the upcoming year.
-			makeRoomTables();
+			//makeRoomTables();
             showGUI();
             }
         });
