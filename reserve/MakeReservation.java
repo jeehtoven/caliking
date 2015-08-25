@@ -287,6 +287,7 @@ public class MakeReservation extends JPanel implements ActionListener {
 			Statement stmt_checkrooms_2 = con.createStatement();
 			
 			String insert = null;
+			int flag = 0;
 		
 			String room_type;
 			if (standardRoom.isSelected()) {room_type = "Standard"; code = 1;}
@@ -333,12 +334,18 @@ public class MakeReservation extends JPanel implements ActionListener {
 					String bookroom = "UPDATE `" + tb_range_list.get(x) + "` SET booked = '1' WHERE room = '" + getroomnumber + "';";
 			//System.out.println(insert); 
 				int cr=stmt_checkrooms_2.executeUpdate(bookroom);
+				flag = 1;
 				System.out.println("Room Booked!");
 				}
 			}
 				
-			int rs=stmt_insert.executeUpdate(insert);	
+			if (flag == 1) {
+				int rs=stmt_insert.executeUpdate(insert);
+				}	
 				
+			else {
+					System.out.println("All " + room_type + " rooms are booked for the time requested.");}
+			
 			
 				
 			
